@@ -3,8 +3,9 @@ var $ = require('jquery'),
   	dispatcher = require('dispatcher');
 
 var KEYS = {
-	'PAUSE_RESUME': 32, // Space
-	'CLEAR': 27	// Esc
+	'PAUSE_RESUME': 32, 	// Space
+	'CLEAR': 27,			// Esc
+	'TOGGLE_FILTER': 70		// f
 };
 
 function testKeyEvent(e) {

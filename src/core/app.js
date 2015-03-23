@@ -4,6 +4,7 @@ var dispatcher = require('dispatcher'),
 	SampleBank = require('../modules/samplebank'),
 	Transport = require('../modules/transport'),
 	PatternGrid = require('../modules/patterngrid'),
+	FilterFX = require('../modules/filterfx'),
 	KeyControls = require('../modules/keycontrols');
 
 
@@ -31,6 +32,9 @@ function launchApp() {
     		case 'PAUSE_RESUME':
     			dispatcher.trigger('patterngrid:toggleplay');
     			break;
+    		case 'TOGGLE_FILTER':
+    			dispatcher.trigger('filterfx:toggleactive');
+    			break;
     		case 'CLEAR':
     			dispatcher.trigger('patterngrid:setpattern', {
     				'openHat':		'0000000000000000',
@@ -44,9 +48,15 @@ function launchApp() {
     	}
     });
 
+    // FX node creation -> samplebank
+    dispatcher.on('filterfx:nodeupdated', function(node) {
+    	dispatcher.trigger('samplebank:setfxnode', node);
+    });
+
     // Init the rest of our modules
 	Transport.init({ el: document.getElementById('top') });
 	PatternGrid.init({ el: document.getElementById('middle') });
+	FilterFX.init({ el: document.getElementById('bottom') });
 	KeyControls.init();
 	
 
@@ -64,6 +74,10 @@ function launchApp() {
 var App = {
 
 	init: function() {
+
+		document.addEventListener('visibilitychange', function(e) {
+	      if(document.hidden) dispatcher.trigger('patterngrid:stop');
+	    }, false);
 
 		dispatcher.on('samplebank:ready', launchApp);
 

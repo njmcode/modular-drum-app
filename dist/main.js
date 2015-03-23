@@ -13038,6 +13038,7 @@ var dispatcher = require('dispatcher'),
 	SampleBank = require('../modules/samplebank'),
 	Transport = require('../modules/transport'),
 	PatternGrid = require('../modules/patterngrid'),
+	FilterFX = require('../modules/filterfx'),
 	KeyControls = require('../modules/keycontrols');
 
 
@@ -13065,6 +13066,9 @@ function launchApp() {
     		case 'PAUSE_RESUME':
     			dispatcher.trigger('patterngrid:toggleplay');
     			break;
+    		case 'TOGGLE_FILTER':
+    			dispatcher.trigger('filterfx:toggleactive');
+    			break;
     		case 'CLEAR':
     			dispatcher.trigger('patterngrid:setpattern', {
     				'openHat':		'0000000000000000',
@@ -13078,9 +13082,15 @@ function launchApp() {
     	}
     });
 
+    // FX node creation -> samplebank
+    dispatcher.on('filterfx:nodeupdated', function(node) {
+    	dispatcher.trigger('samplebank:setfxnode', node);
+    });
+
     // Init the rest of our modules
 	Transport.init({ el: document.getElementById('top') });
 	PatternGrid.init({ el: document.getElementById('middle') });
+	FilterFX.init({ el: document.getElementById('bottom') });
 	KeyControls.init();
 	
 
@@ -13099,6 +13109,10 @@ var App = {
 
 	init: function() {
 
+		document.addEventListener('visibilitychange', function(e) {
+	      if(document.hidden) dispatcher.trigger('patterngrid:stop');
+	    }, false);
+
 		dispatcher.on('samplebank:ready', launchApp);
 
 		var sampleSrcs = {
@@ -13112,7 +13126,7 @@ var App = {
 }
 
 module.exports = App;
-},{"../modules/keycontrols":16,"../modules/patterngrid":18,"../modules/samplebank":23,"../modules/transport":24,"dispatcher":15}],15:[function(require,module,exports){
+},{"../modules/filterfx":17,"../modules/keycontrols":19,"../modules/patterngrid":21,"../modules/samplebank":26,"../modules/transport":27,"dispatcher":15}],15:[function(require,module,exports){
 var Backbone = require('backbone'),
 	_ = require('underscore');
 
@@ -13120,13 +13134,103 @@ var dispatcher = _.extend({}, Backbone.Events);
 
 module.exports = dispatcher;
 },{"backbone":2,"underscore":12}],16:[function(require,module,exports){
+// hbsfy compiled Handlebars template
+var HandlebarsCompiler = require('hbsfy/runtime');
+module.exports = HandlebarsCompiler.template({"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
+    return "<div class=\"module filterfx\">\n	<h3>Filter FX</h3>\n	Freq <input class=\"slider-freq\" type=\"range\" min=\"0\" max=\"1\" step=\"0.01\" value=\"0.5\" />\n	Q <input class=\"slider-q\" type=\"range\" min=\"0\" max=\"1\" step=\"0.01\" value=\"0.5\" />\n</div>";
+},"useData":true});
+
+},{"hbsfy/runtime":10}],17:[function(require,module,exports){
+var dispatcher = require('dispatcher'),
+  AUDIO = require('../../common/audiocontext'),
+  FilterFXView = require('./view.filterfx');
+
+var filterNode,
+	isActive = false;
+
+function createFilterNode() {
+	filterNode = AUDIO.createBiquadFilter();
+
+	filterNode.type = 'lowpass'; // Low-pass filter. See BiquadFilterNode docs
+	filterNode.frequency.value = 440; // Set cutoff to 440 HZ
+
+	if(isActive) dispatcher.trigger('filterfx:nodeupdated', filterNode);
+}
+
+function setFrequency(value) {
+	console.log('setFrequency', value);
+	var minValue = 40;
+	var maxValue = AUDIO.sampleRate / 2;
+	var numberOfOctaves = Math.log(maxValue / minValue) / Math.LN2;
+	var multiplier = Math.pow(2, numberOfOctaves * (value - 1.0));
+	filterNode.frequency.value = maxValue * multiplier;
+}
+
+function setQ(value) {
+	console.log('setQ', value);
+	filterNode.Q.value = value * 30;
+}
+
+function toggleActive() {
+	isActive = !isActive;
+	dispatcher.trigger('filterfx:nodeupdated', isActive ? filterNode : null);
+}
+
+function init(options) {
+	dispatcher.on('filterfx:setfreq', setFrequency);
+	dispatcher.on('filterfx:setq', setQ);
+	dispatcher.on('filterfx:toggleactive', toggleActive);
+	createFilterNode();
+	new FilterFXView(options).render();
+}
+
+var FilterFX = {
+	init: init
+}
+
+module.exports = FilterFX;
+},{"../../common/audiocontext":13,"./view.filterfx":18,"dispatcher":15}],18:[function(require,module,exports){
+var Backbone = require('backbone'),
+  $ = require('jquery'),
+  dispatcher = require('dispatcher'),
+
+  _template = require('./filterfx.hbs');
+
+
+var FilterFXView = Backbone.View.extend({
+	events: {
+		'input .slider-freq': 'onFreqChange',
+		'change .slider-freq': 'onFreqChange',
+		'input .slider-q': 'onQChange',
+		'change .slider-q': 'onQChange'
+	},
+	render: function() {
+		var rawHTML = _template();
+		this.$el.html(rawHTML);
+		return this;
+	},
+	onFreqChange: function(e) {
+		console.log('onFreqChange');
+		var newFreq = $(e.currentTarget).val();
+		dispatcher.trigger('filterfx:setfreq', newFreq);
+	},
+	onQChange: function(e) {
+		console.log('onFreqChange');
+		var newQ = $(e.currentTarget).val();
+		dispatcher.trigger('filterfx:setq', newQ);
+	}
+});
+
+module.exports = FilterFXView;
+},{"./filterfx.hbs":16,"backbone":2,"dispatcher":15,"jquery":11}],19:[function(require,module,exports){
 var $ = require('jquery'),
 	_ = require('underscore'),
   	dispatcher = require('dispatcher');
 
 var KEYS = {
-	'PAUSE_RESUME': 32, // Space
-	'CLEAR': 27	// Esc
+	'PAUSE_RESUME': 32, 	// Space
+	'CLEAR': 27,			// Esc
+	'TOGGLE_FILTER': 70		// f
 };
 
 function testKeyEvent(e) {
@@ -13148,7 +13252,7 @@ var KeyControls = {
 };
 
 module.exports = KeyControls;
-},{"dispatcher":15,"jquery":11,"underscore":12}],17:[function(require,module,exports){
+},{"dispatcher":15,"jquery":11,"underscore":12}],20:[function(require,module,exports){
 // hbsfy compiled Handlebars template
 var HandlebarsCompiler = require('hbsfy/runtime');
 module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partials,data) {
@@ -13165,7 +13269,7 @@ module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partia
     + "</div>";
 },"useData":true});
 
-},{"hbsfy/runtime":10}],18:[function(require,module,exports){
+},{"hbsfy/runtime":10}],21:[function(require,module,exports){
 var dispatcher = require('dispatcher'),
 	scheduler = require('./scheduler'),
 	PatternGridView = require('./view.patterngrid');
@@ -13184,7 +13288,7 @@ var PatternGrid = {
 }
 
 module.exports = PatternGrid;
-},{"./scheduler":20,"./view.patterngrid":22,"dispatcher":15}],19:[function(require,module,exports){
+},{"./scheduler":23,"./view.patterngrid":25,"dispatcher":15}],22:[function(require,module,exports){
 // hbsfy compiled Handlebars template
 var HandlebarsCompiler = require('hbsfy/runtime');
 module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partials,data) {
@@ -13199,7 +13303,7 @@ module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partia
     + "	</div>\n</div>";
 },"useData":true});
 
-},{"hbsfy/runtime":10}],20:[function(require,module,exports){
+},{"hbsfy/runtime":10}],23:[function(require,module,exports){
 var dispatcher = require('dispatcher'),
 	_ = require('underscore'),
 	AUDIO = require('../../common/audiocontext');
@@ -13303,7 +13407,7 @@ var api = {
 };
 
 module.exports = api;
-},{"../../common/audiocontext":13,"dispatcher":15,"underscore":12}],21:[function(require,module,exports){
+},{"../../common/audiocontext":13,"dispatcher":15,"underscore":12}],24:[function(require,module,exports){
 var Backbone = require('backbone'),
   $ = require('jquery'),
   scheduler = require('./scheduler'),
@@ -13352,7 +13456,7 @@ var ChannelView = Backbone.View.extend({
 });
 
 module.exports = ChannelView;
-},{"./channel.hbs":17,"./scheduler":20,"backbone":2,"jquery":11}],22:[function(require,module,exports){
+},{"./channel.hbs":20,"./scheduler":23,"backbone":2,"jquery":11}],25:[function(require,module,exports){
 var Backbone = require('backbone'),
   $ = require('jquery'),
   dispatcher = require('dispatcher'),
@@ -13424,12 +13528,13 @@ var PatternGridView = Backbone.View.extend({
 });
 
 module.exports = PatternGridView;
-},{"./patterngrid.hbs":19,"./scheduler":20,"./view.channel":21,"backbone":2,"dispatcher":15,"jquery":11}],23:[function(require,module,exports){
+},{"./patterngrid.hbs":22,"./scheduler":23,"./view.channel":24,"backbone":2,"dispatcher":15,"jquery":11}],26:[function(require,module,exports){
 var dispatcher = require('dispatcher'),
   AUDIO = require('../../common/audiocontext');
 
 
-var bank = {};
+var bank = {},
+  fxNode = null;
 
 /**
  * Resource loading
@@ -13470,12 +13575,22 @@ function _loadSample(key, url) {
 function playSample(id, when) {
   var s = AUDIO.createBufferSource();
   s.buffer = bank[id];
-  s.connect(AUDIO.destination);
+  if(fxNode) {
+    s.connect(fxNode);
+    fxNode.connect(AUDIO.destination);
+  } else {
+    s.connect(AUDIO.destination);
+  }
   s.start(when || 0);
+}
+
+function setFxNode(node) {
+  fxNode = node;
 }
 
 function init(srcObj) {
   dispatcher.on('samplebank:playsample', playSample);
+  dispatcher.on('samplebank:setfxnode', setFxNode);
   loadSamples(srcObj);
 }
 
@@ -13485,7 +13600,7 @@ var SampleBank = {
 };
 
 module.exports = SampleBank;
-},{"../../common/audiocontext":13,"dispatcher":15}],24:[function(require,module,exports){
+},{"../../common/audiocontext":13,"dispatcher":15}],27:[function(require,module,exports){
 var dispatcher = require('dispatcher'),
 	TransportView = require('./view.transport');
 
@@ -13499,14 +13614,14 @@ var Transport = {
 }
 
 module.exports = Transport;
-},{"./view.transport":26,"dispatcher":15}],25:[function(require,module,exports){
+},{"./view.transport":29,"dispatcher":15}],28:[function(require,module,exports){
 // hbsfy compiled Handlebars template
 var HandlebarsCompiler = require('hbsfy/runtime');
 module.exports = HandlebarsCompiler.template({"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
     return "<div class=\"module transport\">\n  	<h3>Transport</h3>\n  	<button class=\"transport-play\" title=\"Play\">&#9658;</button>\n	<button class=\"transport-stop\" title=\"Stop\">&#9632;</button>\n	<input type=\"text\" size=\"3\" min=\"30\" max=\"250\" value=\"130\" class=\"transport-tempo\" />\n</div>";
 },"useData":true});
 
-},{"hbsfy/runtime":10}],26:[function(require,module,exports){
+},{"hbsfy/runtime":10}],29:[function(require,module,exports){
 var Backbone = require('backbone'),
   $ = require('jquery'),
   dispatcher = require('dispatcher'),
@@ -13543,6 +13658,6 @@ var TransportView = Backbone.View.extend({
 });
 
 module.exports = TransportView;
-},{"./transport.hbs":25,"backbone":2,"dispatcher":15,"jquery":11}]},{},[1]);
+},{"./transport.hbs":28,"backbone":2,"dispatcher":15,"jquery":11}]},{},[1]);
 
 //# sourceMappingURL=main.js.map

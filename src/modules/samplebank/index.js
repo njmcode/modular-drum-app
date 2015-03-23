@@ -2,7 +2,8 @@ var dispatcher = require('dispatcher'),
   AUDIO = require('../../common/audiocontext');
 
 
-var bank = {};
+var bank = {},
+  fxNode = null;
 
 /**
  * Resource loading
@@ -43,12 +44,22 @@ function _loadSample(key, url) {
 function playSample(id, when) {
   var s = AUDIO.createBufferSource();
   s.buffer = bank[id];
-  s.connect(AUDIO.destination);
+  if(fxNode) {
+    s.connect(fxNode);
+    fxNode.connect(AUDIO.destination);
+  } else {
+    s.connect(AUDIO.destination);
+  }
   s.start(when || 0);
+}
+
+function setFxNode(node) {
+  fxNode = node;
 }
 
 function init(srcObj) {
   dispatcher.on('samplebank:playsample', playSample);
+  dispatcher.on('samplebank:setfxnode', setFxNode);
   loadSamples(srcObj);
 }
 
