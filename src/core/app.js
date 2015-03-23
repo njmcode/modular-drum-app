@@ -5,17 +5,32 @@ var dispatcher = require('dispatcher'),
 	PatternGrid = require('../modules/patterngrid');
 
 
+function launchApp() {
+
+	dispatcher.on('patterngrid:requestsampleplay', function(sampleID, time) {
+		dispatcher.trigger('samplebank:playsample', sampleID, time);
+	});
+
+	PatternGrid.init({ el: document.getElementById('wrap') });
+
+	var pattern = {
+      sequence: {
+        'openHat':		'0000000000000000',
+        'closedHat':	'0000000000000000',
+        'snare':		'0000100000001000',
+        'kick':			'1000000010000000'
+      }
+    };
+    
+    dispatcher.trigger('patterngrid:setpattern', pattern);
+    dispatcher.trigger('patterngrid:play');
+}
+
 var App = {
+
 	init: function() {
 
-		dispatcher.on('samplebank:ready', function() {
-			console.log('All samples loaded');
-			
-			setInterval(function() {
-				dispatcher.trigger('samplebank:playsample', 'snare');
-			}, 1000);
-
-		});
+		dispatcher.on('samplebank:ready', launchApp);
 
 		var sampleSrcs = {
 			'kick': 'assets/samples/kick.wav',

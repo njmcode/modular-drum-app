@@ -13,7 +13,9 @@
     "vinyl-buffer": "latest",
     "vinyl-source-stream": "latest",
     "browserify": "latest",
-    "watchify": "latest"
+    "watchify": "latest",
+    "handlebars": "latest",
+    "hbsfy": "latest"
   },
   "dependencies": {
   	"backbone": "latest",

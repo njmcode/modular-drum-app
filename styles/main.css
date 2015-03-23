@@ -1,0 +1,21 @@
+
+.channel span {
+	display: inline-block;
+	width: 50px;
+	height: 100px;
+	border: 1px solid silver;
+	background: silver;
+	margin: 5px;
+}
+
+.channel span.seq-step-measure {
+	background: white;
+}
+
+.channel span.seq-note {
+	background: blue;
+}
+
+.channel span.seq-playhead {
+	border-color: blue;
+}

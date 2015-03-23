@@ -1,7 +1,8 @@
-var dispatcher = require('dispatcher');
+var dispatcher = require('dispatcher'),
+  AUDIO = require('../../common/audiocontext');
 
-var AUDIO,  
-  bank = {};
+
+var bank = {};
 
 /**
  * Resource loading
@@ -47,10 +48,6 @@ function playSample(id, when) {
 }
 
 function init(srcObj) {
-  AUDIO = new (window.AudioContext || window.webkitAudioContext)();
-  if(!AUDIO) {
-    throw 'Web Audio API not supported';
-  }
   dispatcher.on('samplebank:playsample', playSample);
   loadSamples(srcObj);
 }
