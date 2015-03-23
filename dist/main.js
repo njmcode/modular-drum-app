@@ -13037,17 +13037,18 @@ var dispatcher = require('dispatcher'),
 
 	SampleBank = require('../modules/samplebank'),
 	Transport = require('../modules/transport'),
-	PatternGrid = require('../modules/patterngrid');
+	PatternGrid = require('../modules/patterngrid'),
+	KeyControls = require('../modules/keycontrols');
 
 
 function launchApp() {
 
-	// Pattern note trigger -> soundbank
+	// Patterngrid note trigger -> soundbank
 	dispatcher.on('patterngrid:requestsampleplay', function(sampleID, time) {
 		dispatcher.trigger('samplebank:playsample', sampleID, time);
 	});
 
-	// Transport controls -> sequencer
+	// Transport controls -> patterngrid
     dispatcher.on('transport:requestplay', function() {
       dispatcher.trigger('patterngrid:play');
     });
@@ -13058,9 +13059,29 @@ function launchApp() {
       dispatcher.trigger('patterngrid:settempo', newTempo);
     });
 
+    // Keycontrols -> patterngrid
+    dispatcher.on('keycontrols:keypressed', function(key) {
+    	switch(key) {
+    		case 'PAUSE_RESUME':
+    			dispatcher.trigger('patterngrid:toggleplay');
+    			break;
+    		case 'CLEAR':
+    			dispatcher.trigger('patterngrid:setpattern', {
+    				'openHat':		'0000000000000000',
+				    'closedHat':	'0000000000000000',
+				    'snare':		'0000000000000000',
+				    'kick':			'0000000000000000'
+    			});
+    			break;
+    		default:
+    			break;
+    	}
+    });
+
     // Init the rest of our modules
 	Transport.init({ el: document.getElementById('top') });
 	PatternGrid.init({ el: document.getElementById('middle') });
+	KeyControls.init();
 	
 
 	// Set up a basic pattern and play it
@@ -13091,7 +13112,7 @@ var App = {
 }
 
 module.exports = App;
-},{"../modules/patterngrid":17,"../modules/samplebank":22,"../modules/transport":23,"dispatcher":15}],15:[function(require,module,exports){
+},{"../modules/keycontrols":16,"../modules/patterngrid":18,"../modules/samplebank":23,"../modules/transport":24,"dispatcher":15}],15:[function(require,module,exports){
 var Backbone = require('backbone'),
 	_ = require('underscore');
 
@@ -13099,6 +13120,35 @@ var dispatcher = _.extend({}, Backbone.Events);
 
 module.exports = dispatcher;
 },{"backbone":2,"underscore":12}],16:[function(require,module,exports){
+var $ = require('jquery'),
+	_ = require('underscore'),
+  	dispatcher = require('dispatcher');
+
+var KEYS = {
+	'PAUSE_RESUME': 32, // Space
+	'CLEAR': 27	// Esc
+};
+
+function testKeyEvent(e) {
+	var key = _.invert(KEYS)[e.which];
+
+	console.log(e.which, key);
+
+	if (key) {
+		dispatcher.trigger('keycontrols:keypressed', key);
+	}
+}
+
+function init() {
+	$(window).on('keyup', testKeyEvent);
+}
+
+var KeyControls = {
+	init: init
+};
+
+module.exports = KeyControls;
+},{"dispatcher":15,"jquery":11,"underscore":12}],17:[function(require,module,exports){
 // hbsfy compiled Handlebars template
 var HandlebarsCompiler = require('hbsfy/runtime');
 module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partials,data) {
@@ -13115,7 +13165,7 @@ module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partia
     + "</div>";
 },"useData":true});
 
-},{"hbsfy/runtime":10}],17:[function(require,module,exports){
+},{"hbsfy/runtime":10}],18:[function(require,module,exports){
 var dispatcher = require('dispatcher'),
 	scheduler = require('./scheduler'),
 	PatternGridView = require('./view.patterngrid');
@@ -13123,7 +13173,9 @@ var dispatcher = require('dispatcher'),
 function init(options) {
 	new PatternGridView(options).render();
 	scheduler.setTempo(130);
+
 	dispatcher.on('patterngrid:play', scheduler.playPattern);
+	dispatcher.on('patterngrid:toggleplay', scheduler.togglePlay);
 	dispatcher.on('patterngrid:settempo', scheduler.setTempo);
 }
 
@@ -13132,7 +13184,7 @@ var PatternGrid = {
 }
 
 module.exports = PatternGrid;
-},{"./scheduler":19,"./view.patterngrid":21,"dispatcher":15}],18:[function(require,module,exports){
+},{"./scheduler":20,"./view.patterngrid":22,"dispatcher":15}],19:[function(require,module,exports){
 // hbsfy compiled Handlebars template
 var HandlebarsCompiler = require('hbsfy/runtime');
 module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partials,data) {
@@ -13147,7 +13199,7 @@ module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partia
     + "	</div>\n</div>";
 },"useData":true});
 
-},{"hbsfy/runtime":10}],19:[function(require,module,exports){
+},{"hbsfy/runtime":10}],20:[function(require,module,exports){
 var dispatcher = require('dispatcher'),
 	_ = require('underscore'),
 	AUDIO = require('../../common/audiocontext');
@@ -13229,6 +13281,11 @@ function stop() {
 	dispatcher.trigger('patterngrid:setstep', currentStep);
 }
 
+function togglePlay() {
+	var fn = (isPlaying) ? stop : play;
+	fn();
+}
+
 function setTempo(newTempo) {
 	tempo = newTempo;
 	tic = (60 / tempo) / 4; // 16th
@@ -13240,12 +13297,13 @@ var api = {
 	parsePattern: parsePattern,
 	getCurrentPattern: getCurrentPattern,
 	play: play,
+	togglePlay: togglePlay,
 	stop: stop,
 	setTempo: setTempo
 };
 
 module.exports = api;
-},{"../../common/audiocontext":13,"dispatcher":15,"underscore":12}],20:[function(require,module,exports){
+},{"../../common/audiocontext":13,"dispatcher":15,"underscore":12}],21:[function(require,module,exports){
 var Backbone = require('backbone'),
   $ = require('jquery'),
   scheduler = require('./scheduler'),
@@ -13294,7 +13352,7 @@ var ChannelView = Backbone.View.extend({
 });
 
 module.exports = ChannelView;
-},{"./channel.hbs":16,"./scheduler":19,"backbone":2,"jquery":11}],21:[function(require,module,exports){
+},{"./channel.hbs":17,"./scheduler":20,"backbone":2,"jquery":11}],22:[function(require,module,exports){
 var Backbone = require('backbone'),
   $ = require('jquery'),
   dispatcher = require('dispatcher'),
@@ -13366,7 +13424,7 @@ var PatternGridView = Backbone.View.extend({
 });
 
 module.exports = PatternGridView;
-},{"./patterngrid.hbs":18,"./scheduler":19,"./view.channel":20,"backbone":2,"dispatcher":15,"jquery":11}],22:[function(require,module,exports){
+},{"./patterngrid.hbs":19,"./scheduler":20,"./view.channel":21,"backbone":2,"dispatcher":15,"jquery":11}],23:[function(require,module,exports){
 var dispatcher = require('dispatcher'),
   AUDIO = require('../../common/audiocontext');
 
@@ -13427,7 +13485,7 @@ var SampleBank = {
 };
 
 module.exports = SampleBank;
-},{"../../common/audiocontext":13,"dispatcher":15}],23:[function(require,module,exports){
+},{"../../common/audiocontext":13,"dispatcher":15}],24:[function(require,module,exports){
 var dispatcher = require('dispatcher'),
 	TransportView = require('./view.transport');
 
@@ -13441,14 +13499,14 @@ var Transport = {
 }
 
 module.exports = Transport;
-},{"./view.transport":25,"dispatcher":15}],24:[function(require,module,exports){
+},{"./view.transport":26,"dispatcher":15}],25:[function(require,module,exports){
 // hbsfy compiled Handlebars template
 var HandlebarsCompiler = require('hbsfy/runtime');
 module.exports = HandlebarsCompiler.template({"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
     return "<div class=\"module transport\">\n  	<h3>Transport</h3>\n  	<button class=\"transport-play\" title=\"Play\">&#9658;</button>\n	<button class=\"transport-stop\" title=\"Stop\">&#9632;</button>\n	<input type=\"text\" size=\"3\" min=\"30\" max=\"250\" value=\"130\" class=\"transport-tempo\" />\n</div>";
 },"useData":true});
 
-},{"hbsfy/runtime":10}],25:[function(require,module,exports){
+},{"hbsfy/runtime":10}],26:[function(require,module,exports){
 var Backbone = require('backbone'),
   $ = require('jquery'),
   dispatcher = require('dispatcher'),
@@ -13485,6 +13543,6 @@ var TransportView = Backbone.View.extend({
 });
 
 module.exports = TransportView;
-},{"./transport.hbs":24,"backbone":2,"dispatcher":15,"jquery":11}]},{},[1]);
+},{"./transport.hbs":25,"backbone":2,"dispatcher":15,"jquery":11}]},{},[1]);
 
 //# sourceMappingURL=main.js.map

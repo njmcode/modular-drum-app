@@ -79,6 +79,11 @@ function stop() {
 	dispatcher.trigger('patterngrid:setstep', currentStep);
 }
 
+function togglePlay() {
+	var fn = (isPlaying) ? stop : play;
+	fn();
+}
+
 function setTempo(newTempo) {
 	tempo = newTempo;
 	tic = (60 / tempo) / 4; // 16th
@@ -90,6 +95,7 @@ var api = {
 	parsePattern: parsePattern,
 	getCurrentPattern: getCurrentPattern,
 	play: play,
+	togglePlay: togglePlay,
 	stop: stop,
 	setTempo: setTempo
 };

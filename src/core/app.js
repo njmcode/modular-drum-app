@@ -3,17 +3,18 @@ var dispatcher = require('dispatcher'),
 
 	SampleBank = require('../modules/samplebank'),
 	Transport = require('../modules/transport'),
-	PatternGrid = require('../modules/patterngrid');
+	PatternGrid = require('../modules/patterngrid'),
+	KeyControls = require('../modules/keycontrols');
 
 
 function launchApp() {
 
-	// Pattern note trigger -> soundbank
+	// Patterngrid note trigger -> soundbank
 	dispatcher.on('patterngrid:requestsampleplay', function(sampleID, time) {
 		dispatcher.trigger('samplebank:playsample', sampleID, time);
 	});
 
-	// Transport controls -> sequencer
+	// Transport controls -> patterngrid
     dispatcher.on('transport:requestplay', function() {
       dispatcher.trigger('patterngrid:play');
     });
@@ -24,9 +25,29 @@ function launchApp() {
       dispatcher.trigger('patterngrid:settempo', newTempo);
     });
 
+    // Keycontrols -> patterngrid
+    dispatcher.on('keycontrols:keypressed', function(key) {
+    	switch(key) {
+    		case 'PAUSE_RESUME':
+    			dispatcher.trigger('patterngrid:toggleplay');
+    			break;
+    		case 'CLEAR':
+    			dispatcher.trigger('patterngrid:setpattern', {
+    				'openHat':		'0000000000000000',
+				    'closedHat':	'0000000000000000',
+				    'snare':		'0000000000000000',
+				    'kick':			'0000000000000000'
+    			});
+    			break;
+    		default:
+    			break;
+    	}
+    });
+
     // Init the rest of our modules
 	Transport.init({ el: document.getElementById('top') });
 	PatternGrid.init({ el: document.getElementById('middle') });
+	KeyControls.init();
 	
 
 	// Set up a basic pattern and play it

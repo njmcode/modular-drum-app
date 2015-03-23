@@ -5,7 +5,9 @@ var dispatcher = require('dispatcher'),
 function init(options) {
 	new PatternGridView(options).render();
 	scheduler.setTempo(130);
+
 	dispatcher.on('patterngrid:play', scheduler.playPattern);
+	dispatcher.on('patterngrid:toggleplay', scheduler.togglePlay);
 	dispatcher.on('patterngrid:settempo', scheduler.setTempo);
 }
 
