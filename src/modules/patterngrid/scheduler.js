@@ -51,9 +51,9 @@ function playPattern(pattern) {
 
 function parsePattern(pattern) {
 	currentPattern = {};
-	_currentPatternSequenceRaw = _.extend(pattern.sequence, {});
-	for (var k in pattern.sequence) {
-		var pat = pattern.sequence[k].split('');
+	_currentPatternSequenceRaw = _.extend(pattern, {});
+	for (var k in pattern) {
+		var pat = pattern[k].split('');
 		currentPattern[k] = pat;
 	}
 }

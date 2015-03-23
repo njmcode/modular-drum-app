@@ -13036,26 +13036,40 @@ module.exports = AUDIO;
 var dispatcher = require('dispatcher'),
 
 	SampleBank = require('../modules/samplebank'),
+	Transport = require('../modules/transport'),
 	PatternGrid = require('../modules/patterngrid');
 
 
 function launchApp() {
 
+	// Pattern note trigger -> soundbank
 	dispatcher.on('patterngrid:requestsampleplay', function(sampleID, time) {
 		dispatcher.trigger('samplebank:playsample', sampleID, time);
 	});
 
-	PatternGrid.init({ el: document.getElementById('wrap') });
+	// Transport controls -> sequencer
+    dispatcher.on('transport:requestplay', function() {
+      dispatcher.trigger('patterngrid:play');
+    });
+    dispatcher.on('transport:requeststop', function() {
+      dispatcher.trigger('patterngrid:stop');
+    });
+    dispatcher.on('transport:tempochanged', function(newTempo) {
+      dispatcher.trigger('patterngrid:settempo', newTempo);
+    });
 
+    // Init the rest of our modules
+	Transport.init({ el: document.getElementById('top') });
+	PatternGrid.init({ el: document.getElementById('middle') });
+	
+
+	// Set up a basic pattern and play it
 	var pattern = {
-      sequence: {
-        'openHat':		'0000000000000000',
-        'closedHat':	'0000000000000000',
-        'snare':		'0000100000001000',
-        'kick':			'1000000010000000'
-      }
+	    'openHat':		'0000000000000000',
+	    'closedHat':	'0000000000000000',
+	    'snare':		'0000100000001000',
+	    'kick':			'1000000010000000'
     };
-    
     dispatcher.trigger('patterngrid:setpattern', pattern);
     dispatcher.trigger('patterngrid:play');
 }
@@ -13077,7 +13091,7 @@ var App = {
 }
 
 module.exports = App;
-},{"../modules/patterngrid":17,"../modules/samplebank":22,"dispatcher":15}],15:[function(require,module,exports){
+},{"../modules/patterngrid":17,"../modules/samplebank":22,"../modules/transport":23,"dispatcher":15}],15:[function(require,module,exports){
 var Backbone = require('backbone'),
 	_ = require('underscore');
 
@@ -13103,18 +13117,14 @@ module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partia
 
 },{"hbsfy/runtime":10}],17:[function(require,module,exports){
 var dispatcher = require('dispatcher'),
-	_ = require('underscore'),
 	scheduler = require('./scheduler'),
-
 	PatternGridView = require('./view.patterngrid');
-	
 
 function init(options) {
-	console.log('PatternGrid init', options);
 	new PatternGridView(options).render();
 	scheduler.setTempo(130);
-
 	dispatcher.on('patterngrid:play', scheduler.playPattern);
+	dispatcher.on('patterngrid:settempo', scheduler.setTempo);
 }
 
 var PatternGrid = {
@@ -13122,7 +13132,7 @@ var PatternGrid = {
 }
 
 module.exports = PatternGrid;
-},{"./scheduler":19,"./view.patterngrid":21,"dispatcher":15,"underscore":12}],18:[function(require,module,exports){
+},{"./scheduler":19,"./view.patterngrid":21,"dispatcher":15}],18:[function(require,module,exports){
 // hbsfy compiled Handlebars template
 var HandlebarsCompiler = require('hbsfy/runtime');
 module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partials,data) {
@@ -13191,9 +13201,9 @@ function playPattern(pattern) {
 
 function parsePattern(pattern) {
 	currentPattern = {};
-	_currentPatternSequenceRaw = _.extend(pattern.sequence, {});
-	for (var k in pattern.sequence) {
-		var pat = pattern.sequence[k].split('');
+	_currentPatternSequenceRaw = _.extend(pattern, {});
+	for (var k in pattern) {
+		var pat = pattern[k].split('');
 		currentPattern[k] = pat;
 	}
 }
@@ -13417,6 +13427,64 @@ var SampleBank = {
 };
 
 module.exports = SampleBank;
-},{"../../common/audiocontext":13,"dispatcher":15}]},{},[1]);
+},{"../../common/audiocontext":13,"dispatcher":15}],23:[function(require,module,exports){
+var dispatcher = require('dispatcher'),
+	TransportView = require('./view.transport');
+
+function init(options) {
+	console.log('Transport init', options);
+	new TransportView(options).render();
+}
+
+var Transport = {
+	init: init
+}
+
+module.exports = Transport;
+},{"./view.transport":25,"dispatcher":15}],24:[function(require,module,exports){
+// hbsfy compiled Handlebars template
+var HandlebarsCompiler = require('hbsfy/runtime');
+module.exports = HandlebarsCompiler.template({"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
+    return "<div class=\"module transport\">\n  	<h3>Transport</h3>\n  	<button class=\"transport-play\" title=\"Play\">&#9658;</button>\n	<button class=\"transport-stop\" title=\"Stop\">&#9632;</button>\n	<input type=\"text\" size=\"3\" min=\"30\" max=\"250\" value=\"130\" class=\"transport-tempo\" />\n</div>";
+},"useData":true});
+
+},{"hbsfy/runtime":10}],25:[function(require,module,exports){
+var Backbone = require('backbone'),
+  $ = require('jquery'),
+  dispatcher = require('dispatcher'),
+
+  _template = require('./transport.hbs');
+
+
+var TransportView = Backbone.View.extend({
+	events: {
+		'click .transport-play': 'play',
+		'click .transport-stop': 'stop',
+		'change .transport-tempo': 'onTempoChange'
+	},
+	initialize: function(options) {
+		this.listenTo(dispatcher, 'transport:play', this.play);
+		this.listenTo(dispatcher, 'transport:play', this.stop);
+	},
+	render: function() {
+		var rawHTML = _template();
+		this.$el.html(rawHTML);
+		this.$tempo = this.$el.find('.transport-tempo');
+		return this;
+	},
+	play: function() {
+		dispatcher.trigger('transport:requestplay');
+	},
+	stop: function() {
+		dispatcher.trigger('transport:requeststop');
+	},
+	onTempoChange: function(e) {
+		var newTempo = $(e.currentTarget).val();
+		dispatcher.trigger('transport:tempochanged', newTempo);
+	}
+});
+
+module.exports = TransportView;
+},{"./transport.hbs":24,"backbone":2,"dispatcher":15,"jquery":11}]},{},[1]);
 
 //# sourceMappingURL=main.js.map
