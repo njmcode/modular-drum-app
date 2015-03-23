@@ -51,7 +51,7 @@ function init(srcObj) {
   if(!AUDIO) {
     throw 'Web Audio API not supported';
   }
-  dispatcher.on('samplebank:play', playSample);
+  dispatcher.on('samplebank:playsample', playSample);
   loadSamples(srcObj);
 }
 

@@ -3164,7 +3164,9 @@ var App = {
 		dispatcher.on('samplebank:ready', function() {
 			console.log('All samples loaded');
 			
-			PatternGrid.init();
+			setInterval(function() {
+				dispatcher.trigger('samplebank:playsample', 'snare');
+			}, 1000);
 
 		});
 
@@ -3248,7 +3250,7 @@ function init(srcObj) {
   if(!AUDIO) {
     throw 'Web Audio API not supported';
   }
-  dispatcher.on('samplebank:play', playSample);
+  dispatcher.on('samplebank:playsample', playSample);
   loadSamples(srcObj);
 }
 

@@ -11,7 +11,9 @@ var App = {
 		dispatcher.on('samplebank:ready', function() {
 			console.log('All samples loaded');
 			
-			PatternGrid.init();
+			setInterval(function() {
+				dispatcher.trigger('samplebank:playsample', 'snare');
+			}, 1000);
 
 		});
 
