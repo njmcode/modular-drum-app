@@ -13041,24 +13041,47 @@ var dispatcher = require('dispatcher'),
 	FilterFX = require('../modules/filterfx'),
 	KeyControls = require('../modules/keycontrols');
 
+var patterns = {
+	basic: {
+	    'openHat':		'0000000000000000',
+	    'closedHat':	'0000000000000000',
+	    'snare':		'0000100000001000',
+	    'kick':			'1000000010000000'
+    },
+    empty: {
+		'openHat':		'0000000000000000',
+	    'closedHat':	'0000000000000000',
+	    'snare':		'0000000000000000',
+	    'kick':			'0000000000000000'
+    }
+}
+
+function proxyEvents(eventsHash) {
+
+	for (var triggerEvent in eventsHash) {
+
+		var _proxy = (function(proxyEvent) {
+			return function() {
+				var args = Array.prototype.slice.apply(arguments);
+				args.unshift(proxyEvent);
+				dispatcher.trigger.apply(dispatcher, args);
+			}
+		})(eventsHash[triggerEvent]);
+
+		dispatcher.on(triggerEvent, _proxy);
+		
+	}
+}
 
 function launchApp() {
 
-	// Patterngrid note trigger -> soundbank
-	dispatcher.on('patterngrid:requestsampleplay', function(sampleID, time) {
-		dispatcher.trigger('samplebank:playsample', sampleID, time);
+	proxyEvents({
+		'patterngrid:requestsampleplay': 'samplebank:playsample',
+		'transport:requestplay': 'patterngrid:play',
+		'transport:requeststop': 'patterngrid:stop',
+		'transport:tempochanged': 'patterngrid:settempo',
+		'filterfx:nodeupdated': 'samplebank:setfxnode'
 	});
-
-	// Transport controls -> patterngrid
-    dispatcher.on('transport:requestplay', function() {
-      dispatcher.trigger('patterngrid:play');
-    });
-    dispatcher.on('transport:requeststop', function() {
-      dispatcher.trigger('patterngrid:stop');
-    });
-    dispatcher.on('transport:tempochanged', function(newTempo) {
-      dispatcher.trigger('patterngrid:settempo', newTempo);
-    });
 
     // Keycontrols -> patterngrid
     dispatcher.on('keycontrols:keypressed', function(key) {
@@ -13067,25 +13090,16 @@ function launchApp() {
     			dispatcher.trigger('patterngrid:toggleplay');
     			break;
     		case 'TOGGLE_FILTER':
-    			dispatcher.trigger('filterfx:toggleactive');
+    			dispatcher.trigger('filterfx:changeactive');
     			break;
     		case 'CLEAR':
-    			dispatcher.trigger('patterngrid:setpattern', {
-    				'openHat':		'0000000000000000',
-				    'closedHat':	'0000000000000000',
-				    'snare':		'0000000000000000',
-				    'kick':			'0000000000000000'
-    			});
+    			dispatcher.trigger('patterngrid:setpattern', patterns.empty);
     			break;
     		default:
     			break;
     	}
     });
 
-    // FX node creation -> samplebank
-    dispatcher.on('filterfx:nodeupdated', function(node) {
-    	dispatcher.trigger('samplebank:setfxnode', node);
-    });
 
     // Init the rest of our modules
 	Transport.init({ el: document.getElementById('top') });
@@ -13095,14 +13109,9 @@ function launchApp() {
 	
 
 	// Set up a basic pattern and play it
-	var pattern = {
-	    'openHat':		'0000000000000000',
-	    'closedHat':	'0000000000000000',
-	    'snare':		'0000100000001000',
-	    'kick':			'1000000010000000'
-    };
+	
     dispatcher.trigger('patterngrid:setpattern', pattern);
-    dispatcher.trigger('patterngrid:play');
+    //dispatcher.trigger('patterngrid:play');
 }
 
 var App = {
@@ -13137,7 +13146,7 @@ module.exports = dispatcher;
 // hbsfy compiled Handlebars template
 var HandlebarsCompiler = require('hbsfy/runtime');
 module.exports = HandlebarsCompiler.template({"compiler":[6,">= 2.0.0-beta.1"],"main":function(depth0,helpers,partials,data) {
-    return "<div class=\"module filterfx\">\n	<h3>Filter FX</h3>\n	Freq <input class=\"slider-freq\" type=\"range\" min=\"0\" max=\"1\" step=\"0.01\" value=\"0.5\" />\n	Q <input class=\"slider-q\" type=\"range\" min=\"0\" max=\"1\" step=\"0.01\" value=\"0.5\" />\n</div>";
+    return "<div class=\"module filterfx\">\n	<h3>Filter FX</h3>\n	On <input type=\"checkbox\" class=\"slider-toggle\">\n	Freq <input class=\"slider-freq\" type=\"range\" min=\"0\" max=\"1\" step=\"0.01\" value=\"0.5\">\n	Q <input class=\"slider-q\" type=\"range\" min=\"0\" max=\"1\" step=\"0.01\" value=\"0.5\">\n</div>";
 },"useData":true});
 
 },{"hbsfy/runtime":10}],17:[function(require,module,exports){
@@ -13158,7 +13167,6 @@ function createFilterNode() {
 }
 
 function setFrequency(value) {
-	console.log('setFrequency', value);
 	var minValue = 40;
 	var maxValue = AUDIO.sampleRate / 2;
 	var numberOfOctaves = Math.log(maxValue / minValue) / Math.LN2;
@@ -13167,19 +13175,19 @@ function setFrequency(value) {
 }
 
 function setQ(value) {
-	console.log('setQ', value);
 	filterNode.Q.value = value * 30;
 }
 
-function toggleActive() {
-	isActive = !isActive;
+function toggleOrSetActive(newActiveState) {
+	isActive = (newActiveState !== undefined) ? newActiveState : !isActive;
 	dispatcher.trigger('filterfx:nodeupdated', isActive ? filterNode : null);
+	dispatcher.trigger('filterfx:setcheckbox', isActive);
 }
 
 function init(options) {
 	dispatcher.on('filterfx:setfreq', setFrequency);
 	dispatcher.on('filterfx:setq', setQ);
-	dispatcher.on('filterfx:toggleactive', toggleActive);
+	dispatcher.on('filterfx:changeactive', toggleOrSetActive);
 	createFilterNode();
 	new FilterFXView(options).render();
 }
@@ -13202,7 +13210,11 @@ var FilterFXView = Backbone.View.extend({
 		'input .slider-freq': 'onFreqChange',
 		'change .slider-freq': 'onFreqChange',
 		'input .slider-q': 'onQChange',
-		'change .slider-q': 'onQChange'
+		'change .slider-q': 'onQChange',
+		'change .slider-toggle': 'onToggle'
+	},
+	initialize: function() {
+		this.listenTo(dispatcher, 'filterfx:setcheckbox', this.setCheckbox);
 	},
 	render: function() {
 		var rawHTML = _template();
@@ -13210,14 +13222,19 @@ var FilterFXView = Backbone.View.extend({
 		return this;
 	},
 	onFreqChange: function(e) {
-		console.log('onFreqChange');
 		var newFreq = $(e.currentTarget).val();
 		dispatcher.trigger('filterfx:setfreq', newFreq);
 	},
 	onQChange: function(e) {
-		console.log('onFreqChange');
 		var newQ = $(e.currentTarget).val();
 		dispatcher.trigger('filterfx:setq', newQ);
+	},
+	onToggle: function(e) {
+		var isActive = $(e.currentTarget).prop('checked');
+		dispatcher.trigger('filterfx:changeactive', isActive);
+	},
+	setCheckbox: function(isActive) {
+		this.$el.find('.slider-toggle').prop('checked', isActive);
 	}
 });
 

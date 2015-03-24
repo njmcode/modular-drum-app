@@ -7,24 +7,47 @@ var dispatcher = require('dispatcher'),
 	FilterFX = require('../modules/filterfx'),
 	KeyControls = require('../modules/keycontrols');
 
+var patterns = {
+	basic: {
+	    'openHat':		'0000000000000000',
+	    'closedHat':	'0000000000000000',
+	    'snare':		'0000100000001000',
+	    'kick':			'1000000010000000'
+    },
+    empty: {
+		'openHat':		'0000000000000000',
+	    'closedHat':	'0000000000000000',
+	    'snare':		'0000000000000000',
+	    'kick':			'0000000000000000'
+    }
+}
+
+function proxyEvents(eventsHash) {
+
+	for (var triggerEvent in eventsHash) {
+
+		var _proxy = (function(proxyEvent) {
+			return function() {
+				var args = Array.prototype.slice.apply(arguments);
+				args.unshift(proxyEvent);
+				dispatcher.trigger.apply(dispatcher, args);
+			}
+		})(eventsHash[triggerEvent]);
+
+		dispatcher.on(triggerEvent, _proxy);
+		
+	}
+}
 
 function launchApp() {
 
-	// Patterngrid note trigger -> soundbank
-	dispatcher.on('patterngrid:requestsampleplay', function(sampleID, time) {
-		dispatcher.trigger('samplebank:playsample', sampleID, time);
+	proxyEvents({
+		'patterngrid:requestsampleplay': 'samplebank:playsample',
+		'transport:requestplay': 'patterngrid:play',
+		'transport:requeststop': 'patterngrid:stop',
+		'transport:tempochanged': 'patterngrid:settempo',
+		'filterfx:nodeupdated': 'samplebank:setfxnode'
 	});
-
-	// Transport controls -> patterngrid
-    dispatcher.on('transport:requestplay', function() {
-      dispatcher.trigger('patterngrid:play');
-    });
-    dispatcher.on('transport:requeststop', function() {
-      dispatcher.trigger('patterngrid:stop');
-    });
-    dispatcher.on('transport:tempochanged', function(newTempo) {
-      dispatcher.trigger('patterngrid:settempo', newTempo);
-    });
 
     // Keycontrols -> patterngrid
     dispatcher.on('keycontrols:keypressed', function(key) {
@@ -33,25 +56,16 @@ function launchApp() {
     			dispatcher.trigger('patterngrid:toggleplay');
     			break;
     		case 'TOGGLE_FILTER':
-    			dispatcher.trigger('filterfx:toggleactive');
+    			dispatcher.trigger('filterfx:changeactive');
     			break;
     		case 'CLEAR':
-    			dispatcher.trigger('patterngrid:setpattern', {
-    				'openHat':		'0000000000000000',
-				    'closedHat':	'0000000000000000',
-				    'snare':		'0000000000000000',
-				    'kick':			'0000000000000000'
-    			});
+    			dispatcher.trigger('patterngrid:setpattern', patterns.empty);
     			break;
     		default:
     			break;
     	}
     });
 
-    // FX node creation -> samplebank
-    dispatcher.on('filterfx:nodeupdated', function(node) {
-    	dispatcher.trigger('samplebank:setfxnode', node);
-    });
 
     // Init the rest of our modules
 	Transport.init({ el: document.getElementById('top') });
@@ -61,14 +75,9 @@ function launchApp() {
 	
 
 	// Set up a basic pattern and play it
-	var pattern = {
-	    'openHat':		'0000000000000000',
-	    'closedHat':	'0000000000000000',
-	    'snare':		'0000100000001000',
-	    'kick':			'1000000010000000'
-    };
+	
     dispatcher.trigger('patterngrid:setpattern', pattern);
-    dispatcher.trigger('patterngrid:play');
+    //dispatcher.trigger('patterngrid:play');
 }
 
 var App = {

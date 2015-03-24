@@ -15,7 +15,6 @@ function createFilterNode() {
 }
 
 function setFrequency(value) {
-	console.log('setFrequency', value);
 	var minValue = 40;
 	var maxValue = AUDIO.sampleRate / 2;
 	var numberOfOctaves = Math.log(maxValue / minValue) / Math.LN2;
@@ -24,19 +23,19 @@ function setFrequency(value) {
 }
 
 function setQ(value) {
-	console.log('setQ', value);
 	filterNode.Q.value = value * 30;
 }
 
-function toggleActive() {
-	isActive = !isActive;
+function toggleOrSetActive(newActiveState) {
+	isActive = (newActiveState !== undefined) ? newActiveState : !isActive;
 	dispatcher.trigger('filterfx:nodeupdated', isActive ? filterNode : null);
+	dispatcher.trigger('filterfx:setcheckbox', isActive);
 }
 
 function init(options) {
 	dispatcher.on('filterfx:setfreq', setFrequency);
 	dispatcher.on('filterfx:setq', setQ);
-	dispatcher.on('filterfx:toggleactive', toggleActive);
+	dispatcher.on('filterfx:changeactive', toggleOrSetActive);
 	createFilterNode();
 	new FilterFXView(options).render();
 }
