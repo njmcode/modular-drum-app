@@ -13762,14 +13762,43 @@ var SampleBank = {
 
 module.exports = SampleBank;
 },{"../../common/audiocontext":13,"dispatcher":15}],27:[function(require,module,exports){
-var dispatcher = require('dispatcher'),
-	TransportView = require('./view.transport');
+// Application dependencies
+var dispatcher = require('dispatcher');
 
+// Inner dependencies
+var TransportView = require('./view.transport');
+
+
+/**
+ * ------------------------------------------------------
+ * Transport
+ * Provides play, stop and tempo controls.
+ *
+ * Inbound events:
+ *  - None
+ *
+ * Outbound events:
+ *  - samplebank:ready
+ *      Fires when all samples loaded
+ * ------------------------------------------------------
+ **/
+
+
+/**
+ * Module init.
+ * Sets up the view for this module.
+ *
+ * @param options: View.initialize() options
+ **/
 function init(options) {
-	console.log('Transport init', options);
+	console.log('Transport init');
 	new TransportView(options).render();
 }
 
+
+/**
+ * Exported module interface.
+**/
 var Transport = {
 	init: init
 }
@@ -13783,11 +13812,15 @@ module.exports = HandlebarsCompiler.template({"compiler":[6,">= 2.0.0-beta.1"],"
 },"useData":true});
 
 },{"hbsfy/runtime":10}],29:[function(require,module,exports){
+// Library dependencies
 var Backbone = require('backbone'),
-  $ = require('jquery'),
-  dispatcher = require('dispatcher'),
+	$ = require('jquery');
 
-  _template = require('./transport.hbs');
+// Application dependencies
+var dispatcher = require('dispatcher');
+
+// Inner dependencies
+var _template = require('./transport.hbs');
 
 
 var TransportView = Backbone.View.extend({
@@ -13796,10 +13829,7 @@ var TransportView = Backbone.View.extend({
 		'click .transport-stop': 'stop',
 		'change .transport-tempo': 'onTempoChange'
 	},
-	initialize: function(options) {
-		this.listenTo(dispatcher, 'transport:play', this.play);
-		this.listenTo(dispatcher, 'transport:play', this.stop);
-	},
+
 	render: function() {
 		var rawHTML = _template();
 		this.$el.html(rawHTML);
