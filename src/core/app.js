@@ -43,8 +43,8 @@ var patterns = {
 /**
  * Utility function to proxy the parameters from a triggered
  * event directly into another.  Allows us to easily 'wire up'
- * modules by creating connections from an outgoing module event
- * and an incoming event on another module, like a switchboard.
+ * modules by creating connections from an outbound event on
+ * one module to an inbound event on another, like a switchboard.
  *
  * @param eventsHash: object of event pairs to connect
  **/
@@ -119,7 +119,7 @@ function launchApp() {
     KeyControls.init();
 
     // Start with the basic drum pattern on the grid
-    dispatcher.trigger('patterngrid:setpattern', pattern);
+    dispatcher.trigger('patterngrid:setpattern', patterns.basic);
 }
 
 

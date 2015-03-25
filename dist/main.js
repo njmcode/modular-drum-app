@@ -5,9 +5,10 @@ var app = require('./core/app');
 /**
  * ------------------------------------------------------
  * Application entrypoint.
- * Browserify starts bundling from here.
+ * Browserify starts bundling from here, and this is the
+ * first bit of code executed in our app.
  * ------------------------------------------------------
-**/
+ **/
 
 app.init();
 },{"./core/app":14}],2:[function(require,module,exports){
@@ -13034,10 +13035,23 @@ return jQuery;
 }.call(this));
 
 },{}],13:[function(require,module,exports){
-var AUDIO = new (window.AudioContext || window.webkitAudioContext)();
-if(!AUDIO) {
-	throw 'Web Audio API not supported';
+/**
+ * ------------------------------------------------------
+ * Exports an instance of AudioContext, which is the
+ * gateway to Web Audio API functionality.  Handles the
+ * correct prefixing and throws an error if the API isn't
+ * supported.  By require()ing this file in different
+ * parts of the app, we can pass the same instance of
+ * AudioContext around and re-use it.
+ * ------------------------------------------------------
+ **/
+
+
+var AUDIO = new(window.AudioContext || window.webkitAudioContext)();
+if (!AUDIO) {
+    throw 'Web Audio API not supported';
 }
+
 module.exports = AUDIO;
 },{}],14:[function(require,module,exports){
 // Application dependencies
@@ -13085,8 +13099,8 @@ var patterns = {
 /**
  * Utility function to proxy the parameters from a triggered
  * event directly into another.  Allows us to easily 'wire up'
- * modules by creating connections from an outgoing module event
- * and an incoming event on another module, like a switchboard.
+ * modules by creating connections from an outbound event on
+ * one module to an inbound event on another, like a switchboard.
  *
  * @param eventsHash: object of event pairs to connect
  **/
@@ -13161,7 +13175,7 @@ function launchApp() {
     KeyControls.init();
 
     // Start with the basic drum pattern on the grid
-    dispatcher.trigger('patterngrid:setpattern', pattern);
+    dispatcher.trigger('patterngrid:setpattern', patterns.basic);
 }
 
 
@@ -13200,18 +13214,18 @@ module.exports = App;
 },{"../modules/filterfx":17,"../modules/keycontrols":19,"../modules/patterngrid":21,"../modules/samplebank":26,"../modules/transport":27,"dispatcher":15}],15:[function(require,module,exports){
 // Library dependencies
 var Backbone = require('backbone'),
-	_ = require('underscore');
+    _ = require('underscore');
 
 
 /**
  * ------------------------------------------------------
  * Dispatcher/event bus.  Provides pubsub capabilities
  * which our modules and app can use to communicate.
- * Because this exports an object, any file which 
+ * Because this exports an object, any file which
  * require()s it gets the same object reference back, so
  * we're passing around the same dispatcher every time.
  * ------------------------------------------------------
-**/
+ **/
 
 
 // Export our own clone of Backbone's internal Events object
@@ -13623,20 +13637,43 @@ var PatternGridView = Backbone.View.extend({
 
 module.exports = PatternGridView;
 },{"./patterngrid.hbs":22,"./scheduler":23,"./view.channel":24,"backbone":2,"dispatcher":15,"jquery":11}],26:[function(require,module,exports){
+// Application dependencies
 var dispatcher = require('dispatcher'),
   AUDIO = require('../../common/audiocontext');
+
+
+/**
+ * ------------------------------------------------------
+ * SampleBank
+ * Handles the loading, triggering and output of the
+ * drum samples in our app.
+ *
+ * Inbound events:
+ *  - samplebank:playsample (sampleId, when)
+ *      Plays a sample with an optional delay
+ *  - samplebank:setfxnode (Node)
+ *      Inlines a Node in the chain, clears it if null
+ *
+ * Outbound events:
+ *  - samplebank:ready
+ *      Fires when all samples loaded
+ * ------------------------------------------------------
+ **/
 
 
 var bank = {},
   fxNode = null;
 
-/**
- * Resource loading
- **/
-
 var loadCount = 0,
   totalCount = 0;
 
+
+/**
+ * Triggers a load on every item in an object of 
+ * sample sources.
+ *
+ * @param srcObj: object of id:srcpath pairs
+ **/
 function loadSamples(srcObj) {
   for (var k in srcObj) {
     totalCount++;
@@ -13646,6 +13683,14 @@ function loadSamples(srcObj) {
   }
 }
 
+
+/**
+ * Loads a sample via XHR and triggers a 'ready' event if
+ * it's the last one to load.
+ *
+ * @param key: string ID to store sample as
+ * @param url: string path of sample source
+ **/
 function _loadSample(key, url) {
   var req = new XMLHttpRequest();
   req.responseType = "arraybuffer";
@@ -13663,13 +13708,18 @@ function _loadSample(key, url) {
 
 
 /**
- * Resource playing
+ * Triggers a sample to play by creating a new source node
+ * and wiring it (via an FX node, if present) to the
+ * browser's audio output.  Source nodes are not reusable
+ * and will be GC'd by the browser.
+ *
+ * @param id: string ID of sample to play
+ * @param when: int time (ms) after creation to play sound
  **/
-
 function playSample(id, when) {
   var s = AUDIO.createBufferSource();
   s.buffer = bank[id];
-  if(fxNode) {
+  if (fxNode) {
     s.connect(fxNode);
     fxNode.connect(AUDIO.destination);
   } else {
@@ -13678,10 +13728,24 @@ function playSample(id, when) {
   s.start(when || 0);
 }
 
+
+/**
+ * Stores a reference to a node that we will inline, if
+ * present, when playing sounds via playSample().
+ *
+ * @param node: Node instance, or null
+ **/
 function setFxNode(node) {
   fxNode = node;
 }
 
+
+/**
+ * Module init.
+ * Binds inbound events and begins sample loading.
+ *
+ * @param srcObj: see loadSamples()
+ **/
 function init(srcObj) {
   dispatcher.on('samplebank:playsample', playSample);
   dispatcher.on('samplebank:setfxnode', setFxNode);
@@ -13689,6 +13753,9 @@ function init(srcObj) {
 }
 
 
+/**
+ * Exported module interface
+ **/
 var SampleBank = {
   init: init
 };
