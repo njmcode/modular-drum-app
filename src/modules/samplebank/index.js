@@ -108,6 +108,7 @@ function setFxNode(node) {
  * @param srcObj: see loadSamples()
  **/
 function init(srcObj) {
+    console.log('SampleBank init');
     dispatcher.on('samplebank:playsample', playSample);
     dispatcher.on('samplebank:setfxnode', setFxNode);
     loadSamples(srcObj);
