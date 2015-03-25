@@ -13385,6 +13385,7 @@ function testKeyEvent(e) {
  * Binds a jQuery listener for keypresses.
  **/
 function init() {
+    console.log('KeyControls init');
     $(window).on('keyup', testKeyEvent);
 }
 
