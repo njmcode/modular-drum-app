@@ -1,6 +1,6 @@
 // Application dependencies
 var dispatcher = require('dispatcher'),
-  AUDIO = require('../../common/audiocontext');
+    AUDIO = require('../../common/audiocontext');
 
 
 /**
@@ -23,25 +23,25 @@ var dispatcher = require('dispatcher'),
 
 
 var bank = {},
-  fxNode = null;
+    fxNode = null;
 
 var loadCount = 0,
-  totalCount = 0;
+    totalCount = 0;
 
 
 /**
- * Triggers a load on every item in an object of 
+ * Triggers a load on every item in an object of
  * sample sources.
  *
  * @param srcObj: object of id:srcpath pairs
  **/
 function loadSamples(srcObj) {
-  for (var k in srcObj) {
-    totalCount++;
-  }
-  for (var k in srcObj) {
-    _loadSample(k, srcObj[k]);
-  }
+    for (var k in srcObj) {
+        totalCount++;
+    }
+    for (var k in srcObj) {
+        _loadSample(k, srcObj[k]);
+    }
 }
 
 
@@ -53,18 +53,18 @@ function loadSamples(srcObj) {
  * @param url: string path of sample source
  **/
 function _loadSample(key, url) {
-  var req = new XMLHttpRequest();
-  req.responseType = "arraybuffer";
-  req.onload = function() {
-    AUDIO.decodeAudioData(req.response, function(buffer) {
-      bank[key] = buffer;
-      if (++loadCount === totalCount) {
-        dispatcher.trigger('samplebank:ready');
-      }
-    });
-  }
-  req.open('GET', url, true);
-  req.send();
+    var req = new XMLHttpRequest();
+    req.responseType = "arraybuffer";
+    req.onload = function() {
+        AUDIO.decodeAudioData(req.response, function(buffer) {
+            bank[key] = buffer;
+            if (++loadCount === totalCount) {
+                dispatcher.trigger('samplebank:ready');
+            }
+        });
+    }
+    req.open('GET', url, true);
+    req.send();
 }
 
 
@@ -78,15 +78,15 @@ function _loadSample(key, url) {
  * @param when: int time (ms) after creation to play sound
  **/
 function playSample(id, when) {
-  var s = AUDIO.createBufferSource();
-  s.buffer = bank[id];
-  if (fxNode) {
-    s.connect(fxNode);
-    fxNode.connect(AUDIO.destination);
-  } else {
-    s.connect(AUDIO.destination);
-  }
-  s.start(when || 0);
+    var s = AUDIO.createBufferSource();
+    s.buffer = bank[id];
+    if (fxNode) {
+        s.connect(fxNode);
+        fxNode.connect(AUDIO.destination);
+    } else {
+        s.connect(AUDIO.destination);
+    }
+    s.start(when || 0);
 }
 
 
@@ -97,7 +97,7 @@ function playSample(id, when) {
  * @param node: Node instance, or null
  **/
 function setFxNode(node) {
-  fxNode = node;
+    fxNode = node;
 }
 
 
@@ -108,9 +108,9 @@ function setFxNode(node) {
  * @param srcObj: see loadSamples()
  **/
 function init(srcObj) {
-  dispatcher.on('samplebank:playsample', playSample);
-  dispatcher.on('samplebank:setfxnode', setFxNode);
-  loadSamples(srcObj);
+    dispatcher.on('samplebank:playsample', playSample);
+    dispatcher.on('samplebank:setfxnode', setFxNode);
+    loadSamples(srcObj);
 }
 
 
@@ -118,7 +118,7 @@ function init(srcObj) {
  * Exported module interface
  **/
 var SampleBank = {
-  init: init
+    init: init
 };
 
 module.exports = SampleBank;
