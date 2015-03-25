@@ -38,9 +38,6 @@ var KEYS = {
  **/
 function testKeyEvent(e) {
     var key = _.invert(KEYS)[e.which];
-
-    console.log(e.which, key);
-
     if (key) {
         dispatcher.trigger('keycontrols:keypressed', key);
     }

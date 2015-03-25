@@ -51,7 +51,6 @@ function getCurrentPattern() {
  * @param pattern: see parsePattern()
  **/
 function playPattern(pattern) {
-    console.log('playPattern', pattern);
     if (currentPattern === null) parsePattern(pattern);
     play();
 }
@@ -89,7 +88,6 @@ function setTempo(newTempo) {
  * Plays the current pattern from the beginning.
  **/
 function play() {
-    console.log('play');
     isPlaying = true;
     noteTime = 0.0;
     startTime = AUDIO.currentTime + 0.005;
@@ -137,8 +135,8 @@ function scheduleNote() {
 
 
 /**
- * Advances the scheduler to the next step in the pattern
- * looping as needed.
+ * Advances the scheduler to the next step in the pattern,
+ * looping back to the start if needed.
 **/
 function nextNote() {
     currentStep++;

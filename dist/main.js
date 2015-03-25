@@ -1,4 +1,9 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+// Hook up jQuery to Backbone globally
+var Backbone = require('backbone'),
+    $ = require('jquery');
+Backbone.$ = $;
+
 // Application dependencies
 var app = require('./core/app');
 
@@ -11,7 +16,7 @@ var app = require('./core/app');
  **/
 
 app.init();
-},{"./core/app":14}],2:[function(require,module,exports){
+},{"./core/app":14,"backbone":2,"jquery":11}],2:[function(require,module,exports){
 //     Backbone.js 1.1.2
 
 //     (c) 2010-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -13176,6 +13181,8 @@ function launchApp() {
 
     // Start with the basic drum pattern on the grid
     dispatcher.trigger('patterngrid:setpattern', patterns.basic);
+
+    console.log('Ready');
 }
 
 
@@ -13446,9 +13453,6 @@ var KEYS = {
  **/
 function testKeyEvent(e) {
     var key = _.invert(KEYS)[e.which];
-
-    console.log(e.which, key);
-
     if (key) {
         dispatcher.trigger('keycontrols:keypressed', key);
     }
@@ -13620,7 +13624,6 @@ function getCurrentPattern() {
  * @param pattern: see parsePattern()
  **/
 function playPattern(pattern) {
-    console.log('playPattern', pattern);
     if (currentPattern === null) parsePattern(pattern);
     play();
 }
@@ -13658,7 +13661,6 @@ function setTempo(newTempo) {
  * Plays the current pattern from the beginning.
  **/
 function play() {
-    console.log('play');
     isPlaying = true;
     noteTime = 0.0;
     startTime = AUDIO.currentTime + 0.005;
@@ -13706,8 +13708,8 @@ function scheduleNote() {
 
 
 /**
- * Advances the scheduler to the next step in the pattern
- * looping as needed.
+ * Advances the scheduler to the next step in the pattern,
+ * looping back to the start if needed.
 **/
 function nextNote() {
     currentStep++;
@@ -13734,123 +13736,139 @@ var api = {
 
 module.exports = api;
 },{"../../common/audiocontext":13,"dispatcher":15,"underscore":12}],24:[function(require,module,exports){
+// Library dependencies
 var Backbone = require('backbone'),
-  $ = require('jquery'),
-  scheduler = require('./scheduler'),
+    $ = require('jquery');
 
-  _channelTemplate = require('./channel.hbs');
+// Inner dependencies
+var scheduler = require('./scheduler'),
+    _channelTemplate = require('./channel.hbs');
 
 
+/**
+ * Exported Backbone sub-View for a 'channel' -
+ * one line of 16 steps for a given drum sample.
+ * Turning notes on and off re-renders the view.
+ **/
 var ChannelView = Backbone.View.extend({
-	events: {
-		'click .seq-row span': 'onNoteClick'
-	},
-	channel: null,
-	initialize: function(options) {
-		this.channel = options.channel;
-	},
-	render: function() {
-		var rawHTML = _channelTemplate({
-			id: this.channel,
-			notes: this.model
-		});
-		this.$el.html(rawHTML);
-		this.$notes = this.$el.find('.seq-row span');
+    events: {
+        'click .seq-row span': 'onNoteClick'
+    },
+    channel: null,
+    initialize: function(options) {
+        this.channel = options.channel;
+    },
+    render: function() {
+        var rawHTML = _channelTemplate({
+            id: this.channel,
+            notes: this.model
+        });
+        this.$el.html(rawHTML);
+        this.$notes = this.$el.find('.seq-row span');
 
-		var self = this;
-		this.model.forEach(function(note, idx) {
-			var $el = self.$notes.eq(idx);
-			if (note === "1") $el.addClass('seq-note');
-			if (idx % 4 === 0) $el.addClass('seq-step-measure');
-		});
+        var self = this;
+        this.model.forEach(function(note, idx) {
+            var $el = self.$notes.eq(idx);
+            if (note === "1") $el.addClass('seq-note');
+            if (idx % 4 === 0) $el.addClass('seq-step-measure');
+        });
 
-		return this;
-	},
-	clearPlayhead: function() {
-		this.$notes.removeClass('seq-playhead');
-	},
-	setPlayhead: function(id) {
-		this.clearPlayhead();
-		this.$notes.filter('[data-tic="' + id + '"]').addClass('seq-playhead');
-	},
-	onNoteClick: function(e) {
-		var tic = $(e.currentTarget).attr('data-tic');
-		var currentPattern = scheduler.getCurrentPattern();
-		currentPattern[this.channel][tic] = (currentPattern[this.channel][tic] === "1") ? "0" : "1";
-		this.render();
-	}
+        return this;
+    },
+    clearPlayhead: function() {
+        this.$notes.removeClass('seq-playhead');
+    },
+    setPlayhead: function(id) {
+        this.clearPlayhead();
+        this.$notes.filter('[data-tic="' + id + '"]').addClass('seq-playhead');
+    },
+    onNoteClick: function(e) {
+        var tic = $(e.currentTarget).attr('data-tic');
+        var currentPattern = scheduler.getCurrentPattern();
+        currentPattern[this.channel][tic] = (currentPattern[this.channel][tic] === "1") ? "0" : "1";
+        this.render();
+    }
 });
 
 module.exports = ChannelView;
 },{"./channel.hbs":20,"./scheduler":23,"backbone":2,"jquery":11}],25:[function(require,module,exports){
+// Library dependencies
 var Backbone = require('backbone'),
-  $ = require('jquery'),
-  dispatcher = require('dispatcher'),
+    $ = require('jquery');
 
-  scheduler = require('./scheduler'),
-  ChannelView = require('./view.channel'),
-  _template = require('./patterngrid.hbs');
+// Application dependencies  
+var dispatcher = require('dispatcher');
 
-Backbone.$ = $;
+// Inner dependencies
+var scheduler = require('./scheduler'),
+    ChannelView = require('./view.channel'),
+    _template = require('./patterngrid.hbs');
 
+
+/**
+ * Exported Backbone View for the pattern editor.
+ * Creates sub-views for each 'channel' (drum sample)
+ * and updates them when the scheduler advances,
+ * pattern data is loaded, or notes are changed.
+ **/
 var PatternGridView = Backbone.View.extend({
 
-  channelViews: {},
-  initialize: function(options) {
-    this.listenTo(dispatcher, 'patterngrid:stop', this.stop);
-    this.listenTo(dispatcher, 'patterngrid:setpattern', this.setPattern);
-    this.listenTo(dispatcher, 'patterngrid:stepchanged', this.setPlayhead);
-  },
-  setPattern: function(pattern) {
-    scheduler.parsePattern(pattern);
+    channelViews: {},
+    initialize: function(options) {
+        this.listenTo(dispatcher, 'patterngrid:stop', this.stop);
+        this.listenTo(dispatcher, 'patterngrid:setpattern', this.setPattern);
+        this.listenTo(dispatcher, 'patterngrid:stepchanged', this.setPlayhead);
+    },
+    setPattern: function(pattern) {
+        scheduler.parsePattern(pattern);
 
-    this.render();
+        this.render();
 
-    for (var k in this.channelViews) {
-      this.channelViews[k].remove();
+        for (var k in this.channelViews) {
+            this.channelViews[k].remove();
+        }
+
+        var currentPattern = scheduler.getCurrentPattern();
+
+        for (var k in currentPattern) {
+            var $cel = this.$el.find('.channel[data-inst="' + k + '"]');
+            this.channelViews[k] = new ChannelView({
+                channel: k,
+                model: currentPattern[k],
+                el: $cel
+            });
+        }
+
+        this.renderChannels();
+    },
+    render: function() {
+        var currentPattern = scheduler.getCurrentPattern();
+
+        var data = (currentPattern) ? Object.keys(currentPattern) : [];
+        var rawHTML = _template({
+            channels: data
+        });
+        this.$el.html(rawHTML);
+        return this;
+    },
+    renderChannels: function() {
+        this.$channelContainer = this.$el.find('.patterngrid-channels');
+        for (var k in this.channelViews) {
+            this.channelViews[k].render();
+        }
+        this.$steps = $('.channel span');
+    },
+    setPlayhead: function(stepId) {
+        for (var k in this.channelViews) {
+            this.channelViews[k].setPlayhead(stepId);
+        }
+    },
+    stop: function() {
+        scheduler.stop();
+        for (var k in this.channelViews) {
+            this.channelViews[k].clearPlayhead();
+        }
     }
-
-    var currentPattern = scheduler.getCurrentPattern();
-
-    for (var k in currentPattern) {
-      var $cel = this.$el.find('.channel[data-inst="' + k + '"]');
-      this.channelViews[k] = new ChannelView({
-        channel: k,
-        model: currentPattern[k],
-        el: $cel
-      });
-    }
-
-    this.renderChannels();
-  },
-  render: function() {
-    var currentPattern = scheduler.getCurrentPattern();
-
-    var data = (currentPattern) ? Object.keys(currentPattern) : [];
-    var rawHTML = _template({
-      channels: data
-    });
-    this.$el.html(rawHTML);
-    return this;
-  },
-  renderChannels: function() {
-    this.$channelContainer = this.$el.find('.patterngrid-channels');
-    for (var k in this.channelViews) {
-      this.channelViews[k].render();
-    }
-    this.$steps = $('.channel span');
-  },
-  setPlayhead: function(stepId) {
-    for (var k in this.channelViews) {
-      this.channelViews[k].setPlayhead(stepId);
-    }
-  },
-  stop: function() {
-    scheduler.stop();
-    for (var k in this.channelViews) {
-      this.channelViews[k].clearPlayhead();
-    }
-  }
 });
 
 module.exports = PatternGridView;

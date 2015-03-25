@@ -120,6 +120,8 @@ function launchApp() {
 
     // Start with the basic drum pattern on the grid
     dispatcher.trigger('patterngrid:setpattern', patterns.basic);
+
+    console.log('Ready');
 }
 
 

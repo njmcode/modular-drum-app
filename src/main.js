@@ -1,3 +1,8 @@
+// Hook up jQuery to Backbone globally
+var Backbone = require('backbone'),
+    $ = require('jquery');
+Backbone.$ = $;
+
 // Application dependencies
 var app = require('./core/app');
 
