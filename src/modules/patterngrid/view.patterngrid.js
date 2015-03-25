@@ -14,7 +14,7 @@ var PatternGridView = Backbone.View.extend({
   initialize: function(options) {
     this.listenTo(dispatcher, 'patterngrid:stop', this.stop);
     this.listenTo(dispatcher, 'patterngrid:setpattern', this.setPattern);
-    this.listenTo(dispatcher, 'patterngrid:setstep', this.setPlayhead);
+    this.listenTo(dispatcher, 'patterngrid:stepchanged', this.setPlayhead);
   },
   setPattern: function(pattern) {
     scheduler.parsePattern(pattern);

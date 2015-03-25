@@ -13491,21 +13491,63 @@ module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partia
 },"useData":true});
 
 },{"hbsfy/runtime":10}],21:[function(require,module,exports){
-var dispatcher = require('dispatcher'),
-	scheduler = require('./scheduler'),
-	PatternGridView = require('./view.patterngrid');
+// Application dependencies
+var dispatcher = require('dispatcher');
 
+// Inner dependencies
+var scheduler = require('./scheduler'),
+    PatternGridView = require('./view.patterngrid');
+
+
+/**
+ * ------------------------------------------------------
+ * PatternGrid
+ * Handles all pattern creation and sequencing, and
+ * provides a grid view for manipulating pattern data.
+ *
+ * Inbound events:
+ *  - patterngrid:setpattern (pattern)
+ *      Loads pattern data into the grid
+ *  - patterngrid:play
+ *      Triggers playback of current pattern
+ *  - patterngrid:stop
+        Stops playback
+ *  - patterngrid:toggleplay
+ *      Starts/stops playback
+ *  - patterngrid:settempo (newTempo)
+ *      Changes the playback tempo
+ *
+ * Outbound events:
+ *  - patterngrid:stepchanged (stepID)
+ *      Fired when scheduler advances to next 16th
+ *  - patterngrid:requestsampleplay (sampleID, delay)
+ *      Fired when scheduler hits an 'on' note
+ * ------------------------------------------------------
+ **/
+
+
+/**
+ * Module init.
+ * Sets up the view for this module and binds inbound events
+ * to the schedule system.  Also sets the scheduler tempo.
+ *
+ * @param options: View.initialize() options
+ **/
 function init(options) {
-	new PatternGridView(options).render();
-	scheduler.setTempo(130);
-
-	dispatcher.on('patterngrid:play', scheduler.playPattern);
-	dispatcher.on('patterngrid:toggleplay', scheduler.togglePlay);
-	dispatcher.on('patterngrid:settempo', scheduler.setTempo);
+    console.log('PatternGrid init');
+    new PatternGridView(options).render();
+    scheduler.setTempo(130);
+    dispatcher.on('patterngrid:play', scheduler.playPattern);
+    dispatcher.on('patterngrid:toggleplay', scheduler.togglePlay);
+    dispatcher.on('patterngrid:settempo', scheduler.setTempo);
 }
 
+
+/**
+ * Exported module interface.
+ **/
 var PatternGrid = {
-	init: init
+    init: init
 }
 
 module.exports = PatternGrid;
@@ -13525,106 +13567,169 @@ module.exports = HandlebarsCompiler.template({"1":function(depth0,helpers,partia
 },"useData":true});
 
 },{"hbsfy/runtime":10}],23:[function(require,module,exports){
+// Library dependencies
 var dispatcher = require('dispatcher'),
-	_ = require('underscore'),
-	AUDIO = require('../../common/audiocontext');
+    _ = require('underscore');
+
+// Application dependencies
+var AUDIO = require('../../common/audiocontext');
+
+
+/**
+ * ------------------------------------------------------
+ * Main pattern sequencing and scheduling code used by
+ * the PatternGrid module.  Handles timing, beat
+ * triggering, and pattern parsing.
+ * ------------------------------------------------------
+ **/
 
 
 var tempo, tic, _initialized = false;
 var noteTime, startTime, ti, currentStep = 0;
 var isPlaying = false;
-var currentPattern = null,
-	_currentPatternSequenceRaw;
+var currentPattern = null;
 
 
-/* Scheduling */
-
-function scheduleNote() {
-	if (!isPlaying) return false;
-	var ct = AUDIO.currentTime;
-	ct -= startTime;
-	while (noteTime < ct + 0.200) {
-		var pt = noteTime + startTime;
-
-		playPatternStepAtTime(pt);
-
-		nextNote();
-	}
-	ti = setTimeout(scheduleNote, 0);
-}
-
-function nextNote() {
-	currentStep++;
-	if (currentStep == 16) currentStep = 0;
-	noteTime += tic;
-}
-
-function playPatternStepAtTime(pt) {
-	for (var k in currentPattern) {
-		if (currentPattern[k][currentStep] == "1") {
-			dispatcher.trigger('patterngrid:requestsampleplay', k, pt);
-		}
-		dispatcher.trigger('patterngrid:setstep', currentStep);
-	}
-}
-
-/* Parsing */
-
-function playPattern(pattern) {
-	console.log('playPattern', pattern);
-	if (currentPattern === null) parsePattern(pattern);
-	play();
-}
-
+/**
+ * Convert a pattern object to an array of '0' and '1' 
+ * values and store it in the scheduler for later use.
+ *
+ * @paran pattern: object of drum ID and pattern values
+ **/
 function parsePattern(pattern) {
-	currentPattern = {};
-	_currentPatternSequenceRaw = _.extend(pattern, {});
-	for (var k in pattern) {
-		var pat = pattern[k].split('');
-		currentPattern[k] = pat;
-	}
+    currentPattern = {};
+    for (var k in pattern) {
+        var pat = pattern[k].split('');
+        currentPattern[k] = pat;
+    }
 }
 
+
+/**
+ * Returns the current (parsed) pattern.
+ **/
 function getCurrentPattern() {
-	return currentPattern;
+    return currentPattern;
 }
 
 
-/** Transport **/
-
-function play() {
-	console.log('play');
-	isPlaying = true;
-	noteTime = 0.0;
-	startTime = AUDIO.currentTime + 0.005;
-	scheduleNote();
+/**
+ * Proxies parsePattern if no pattern is currently
+ * loaded, and triggers play().
+ *
+ * @param pattern: see parsePattern()
+ **/
+function playPattern(pattern) {
+    console.log('playPattern', pattern);
+    if (currentPattern === null) parsePattern(pattern);
+    play();
 }
 
-function stop() {
-	isPlaying = false;
-	currentStep = 0;
-	dispatcher.trigger('patterngrid:setstep', currentStep);
+
+/**
+ * Fires events to the dispatcher if the current step in
+ * the grid has any notes to be played.
+ *
+ * @param pt: calculated time offset to delay the note by
+ **/
+function playPatternStepAtTime(pt) {
+    for (var k in currentPattern) {
+        if (currentPattern[k][currentStep] == '1') {
+            dispatcher.trigger('patterngrid:requestsampleplay', k, pt);
+        }
+        dispatcher.trigger('patterngrid:stepchanged', currentStep);
+    }
 }
 
-function togglePlay() {
-	var fn = (isPlaying) ? stop : play;
-	fn();
-}
 
+/**
+ * Change the tempo of the scheduler, re-calculating the
+ * 'tic' (16th note) duration for future use.
+ *
+ * @param newTempo: int new tempo
+ **/
 function setTempo(newTempo) {
-	tempo = newTempo;
-	tic = (60 / tempo) / 4; // 16th
+    tempo = newTempo;
+    tic = (60 / tempo) / 4; // 16th
 }
 
-/** API **/
+
+/**
+ * Plays the current pattern from the beginning.
+ **/
+function play() {
+    console.log('play');
+    isPlaying = true;
+    noteTime = 0.0;
+    startTime = AUDIO.currentTime + 0.005;
+    scheduleNote();
+}
+
+
+/**
+ * Stops playing.
+ **/
+function stop() {
+    isPlaying = false;
+    currentStep = 0;
+    dispatcher.trigger('patterngrid:stepchanged', currentStep);
+}
+
+
+/**
+ * Toggles playing on or off depending on current state.
+ **/
+function togglePlay() {
+    var fn = (isPlaying) ? stop : play;
+    fn();
+}
+
+
+/**
+ * Calculates the precise time of the next
+ * note in the sequence and triggers it. This
+ * method loops constantly once triggered - think 
+ * of it as like a requestAnimationFrame() for 
+ * note scheduling.
+ **/
+function scheduleNote() {
+    if (!isPlaying) return false;
+    var ct = AUDIO.currentTime;
+    ct -= startTime;
+    while (noteTime < ct + 0.200) {
+        var pt = noteTime + startTime;
+        playPatternStepAtTime(pt);
+        nextNote();
+    }
+    ti = setTimeout(scheduleNote, 0);
+}
+
+
+/**
+ * Advances the scheduler to the next step in the pattern
+ * looping as needed.
+**/
+function nextNote() {
+    currentStep++;
+    if (currentStep == 16) currentStep = 0;
+    noteTime += tic;
+}
+
+
+/**
+ * Exported interface for the scheduler.  Since we only
+ * use it within the PatternGrid module, it's fine to
+ * expose a more comprehensive interface for the rest of
+ * the module to work with directly.
+ **/
 var api = {
-	playPattern: playPattern,
-	parsePattern: parsePattern,
-	getCurrentPattern: getCurrentPattern,
-	play: play,
-	togglePlay: togglePlay,
-	stop: stop,
-	setTempo: setTempo
+    playPattern: playPattern,
+    parsePattern: parsePattern,
+    getCurrentPattern: getCurrentPattern,
+    play: play,
+    togglePlay: togglePlay,
+    stop: stop,
+    setTempo: setTempo
 };
 
 module.exports = api;
@@ -13694,7 +13799,7 @@ var PatternGridView = Backbone.View.extend({
   initialize: function(options) {
     this.listenTo(dispatcher, 'patterngrid:stop', this.stop);
     this.listenTo(dispatcher, 'patterngrid:setpattern', this.setPattern);
-    this.listenTo(dispatcher, 'patterngrid:setstep', this.setPlayhead);
+    this.listenTo(dispatcher, 'patterngrid:stepchanged', this.setPlayhead);
   },
   setPattern: function(pattern) {
     scheduler.parsePattern(pattern);
