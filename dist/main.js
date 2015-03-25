@@ -13524,7 +13524,7 @@ var scheduler = require('./scheduler'),
  * Outbound events:
  *  - patterngrid:stepchanged (stepID)
  *      Fired when scheduler advances to next 16th
- *  - patterngrid:requestsampleplay (sampleID, delay)
+ *  - patterngrid:noteplayed (channelID, delay)
  *      Fired when scheduler hits an 'on' note
  * ------------------------------------------------------
  **/

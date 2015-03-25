@@ -74,7 +74,7 @@ function launchApp() {
     // Bind some connecting events to 'wire up' our modules
     proxyEvents({
         // PatternGrid note trigger -> SampleBank play sound
-        'patterngrid:requestsampleplay': 'samplebank:playsample',
+        'patterngrid:notehit': 'samplebank:playsample',
 
         // Transport control changes -> PatternGrid state changes
         'transport:requestplay': 'patterngrid:play',

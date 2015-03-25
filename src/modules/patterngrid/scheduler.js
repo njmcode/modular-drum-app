@@ -65,7 +65,7 @@ function playPattern(pattern) {
 function playPatternStepAtTime(pt) {
     for (var k in currentPattern) {
         if (currentPattern[k][currentStep] == '1') {
-            dispatcher.trigger('patterngrid:requestsampleplay', k, pt);
+            dispatcher.trigger('patterngrid:notehit', k, pt);
         }
         dispatcher.trigger('patterngrid:stepchanged', currentStep);
     }
