@@ -14,8 +14,12 @@ var TransportView = require('./view.transport');
  *  - None
  *
  * Outbound events:
- *  - samplebank:ready
- *      Fires when all samples loaded
+ *  - transport:requestplay
+ *      Fires when Play button clicked (view.transport)
+ *  - transport:requeststop
+ *      Fires when Stop button clicked (view.transport)
+ *  - transport:tempochanged (newTempo)
+ *      Fires when tempo slider changed (view.transport)
  * ------------------------------------------------------
  **/
 
@@ -34,7 +38,7 @@ function init(options) {
 
 /**
  * Exported module interface.
-**/
+ **/
 var Transport = {
     init: init
 }

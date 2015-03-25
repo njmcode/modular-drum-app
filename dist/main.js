@@ -13242,49 +13242,49 @@ module.exports = HandlebarsCompiler.template({"compiler":[6,">= 2.0.0-beta.1"],"
 
 },{"hbsfy/runtime":10}],17:[function(require,module,exports){
 var dispatcher = require('dispatcher'),
-  AUDIO = require('../../common/audiocontext'),
-  FilterFXView = require('./view.filterfx');
+    AUDIO = require('../../common/audiocontext'),
+    FilterFXView = require('./view.filterfx');
 
 var filterNode,
-	isActive = false;
+    isActive = false;
 
 function createFilterNode() {
-	filterNode = AUDIO.createBiquadFilter();
+    filterNode = AUDIO.createBiquadFilter();
 
-	filterNode.type = 'lowpass'; // Low-pass filter. See BiquadFilterNode docs
-	filterNode.frequency.value = 440; // Set cutoff to 440 HZ
+    filterNode.type = 'lowpass'; // Low-pass filter. See BiquadFilterNode docs
+    filterNode.frequency.value = 440; // Set cutoff to 440 HZ
 
-	if(isActive) dispatcher.trigger('filterfx:nodeupdated', filterNode);
+    if (isActive) dispatcher.trigger('filterfx:nodeupdated', filterNode);
 }
 
 function setFrequency(value) {
-	var minValue = 40;
-	var maxValue = AUDIO.sampleRate / 2;
-	var numberOfOctaves = Math.log(maxValue / minValue) / Math.LN2;
-	var multiplier = Math.pow(2, numberOfOctaves * (value - 1.0));
-	filterNode.frequency.value = maxValue * multiplier;
+    var minValue = 40;
+    var maxValue = AUDIO.sampleRate / 2;
+    var numberOfOctaves = Math.log(maxValue / minValue) / Math.LN2;
+    var multiplier = Math.pow(2, numberOfOctaves * (value - 1.0));
+    filterNode.frequency.value = maxValue * multiplier;
 }
 
 function setQ(value) {
-	filterNode.Q.value = value * 30;
+    filterNode.Q.value = value * 30;
 }
 
 function toggleOrSetActive(newActiveState) {
-	isActive = (newActiveState !== undefined) ? newActiveState : !isActive;
-	dispatcher.trigger('filterfx:nodeupdated', isActive ? filterNode : null);
-	dispatcher.trigger('filterfx:setcheckbox', isActive);
+    isActive = (newActiveState !== undefined) ? newActiveState : !isActive;
+    dispatcher.trigger('filterfx:nodeupdated', isActive ? filterNode : null);
+    dispatcher.trigger('filterfx:setcheckbox', isActive);
 }
 
 function init(options) {
-	dispatcher.on('filterfx:setfreq', setFrequency);
-	dispatcher.on('filterfx:setq', setQ);
-	dispatcher.on('filterfx:changeactive', toggleOrSetActive);
-	createFilterNode();
-	new FilterFXView(options).render();
+    dispatcher.on('filterfx:setfreq', setFrequency);
+    dispatcher.on('filterfx:setq', setQ);
+    dispatcher.on('filterfx:changeactive', toggleOrSetActive);
+    createFilterNode();
+    new FilterFXView(options).render();
 }
 
 var FilterFX = {
-	init: init
+    init: init
 }
 
 module.exports = FilterFX;
@@ -13332,31 +13332,31 @@ var FilterFXView = Backbone.View.extend({
 module.exports = FilterFXView;
 },{"./filterfx.hbs":16,"backbone":2,"dispatcher":15,"jquery":11}],19:[function(require,module,exports){
 var $ = require('jquery'),
-	_ = require('underscore'),
-  	dispatcher = require('dispatcher');
+    _ = require('underscore'),
+    dispatcher = require('dispatcher');
 
 var KEYS = {
-	'PAUSE_RESUME': 32, 	// Space
-	'CLEAR': 27,			// Esc
-	'TOGGLE_FILTER': 70		// f
+    'PAUSE_RESUME': 32, // Space
+    'CLEAR': 27, // Esc
+    'TOGGLE_FILTER': 70 // f
 };
 
 function testKeyEvent(e) {
-	var key = _.invert(KEYS)[e.which];
+    var key = _.invert(KEYS)[e.which];
 
-	console.log(e.which, key);
+    console.log(e.which, key);
 
-	if (key) {
-		dispatcher.trigger('keycontrols:keypressed', key);
-	}
+    if (key) {
+        dispatcher.trigger('keycontrols:keypressed', key);
+    }
 }
 
 function init() {
-	$(window).on('keyup', testKeyEvent);
+    $(window).on('keyup', testKeyEvent);
 }
 
 var KeyControls = {
-	init: init
+    init: init
 };
 
 module.exports = KeyControls;
@@ -13778,8 +13778,12 @@ var TransportView = require('./view.transport');
  *  - None
  *
  * Outbound events:
- *  - samplebank:ready
- *      Fires when all samples loaded
+ *  - transport:requestplay
+ *      Fires when Play button clicked (view.transport)
+ *  - transport:requeststop
+ *      Fires when Stop button clicked (view.transport)
+ *  - transport:tempochanged (newTempo)
+ *      Fires when tempo slider changed (view.transport)
  * ------------------------------------------------------
  **/
 
@@ -13791,16 +13795,16 @@ var TransportView = require('./view.transport');
  * @param options: View.initialize() options
  **/
 function init(options) {
-	console.log('Transport init');
-	new TransportView(options).render();
+    console.log('Transport init');
+    new TransportView(options).render();
 }
 
 
 /**
  * Exported module interface.
-**/
+ **/
 var Transport = {
-	init: init
+    init: init
 }
 
 module.exports = Transport;
@@ -13814,7 +13818,7 @@ module.exports = HandlebarsCompiler.template({"compiler":[6,">= 2.0.0-beta.1"],"
 },{"hbsfy/runtime":10}],29:[function(require,module,exports){
 // Library dependencies
 var Backbone = require('backbone'),
-	$ = require('jquery');
+    $ = require('jquery');
 
 // Application dependencies
 var dispatcher = require('dispatcher');
@@ -13823,29 +13827,33 @@ var dispatcher = require('dispatcher');
 var _template = require('./transport.hbs');
 
 
+/**
+ * Exported Backbone View for the transport controls.
+ * Fires dispatcher events when the controls are
+ * clicked or changed.
+ **/
 var TransportView = Backbone.View.extend({
-	events: {
-		'click .transport-play': 'play',
-		'click .transport-stop': 'stop',
-		'change .transport-tempo': 'onTempoChange'
-	},
-
-	render: function() {
-		var rawHTML = _template();
-		this.$el.html(rawHTML);
-		this.$tempo = this.$el.find('.transport-tempo');
-		return this;
-	},
-	play: function() {
-		dispatcher.trigger('transport:requestplay');
-	},
-	stop: function() {
-		dispatcher.trigger('transport:requeststop');
-	},
-	onTempoChange: function(e) {
-		var newTempo = $(e.currentTarget).val();
-		dispatcher.trigger('transport:tempochanged', newTempo);
-	}
+    events: {
+        'click .transport-play': 'play',
+        'click .transport-stop': 'stop',
+        'change .transport-tempo': 'onTempoChange'
+    },
+    render: function() {
+        var rawHTML = _template();
+        this.$el.html(rawHTML);
+        this.$tempo = this.$el.find('.transport-tempo');
+        return this;
+    },
+    play: function() {
+        dispatcher.trigger('transport:requestplay');
+    },
+    stop: function() {
+        dispatcher.trigger('transport:requeststop');
+    },
+    onTempoChange: function(e) {
+        var newTempo = $(e.currentTarget).val();
+        dispatcher.trigger('transport:tempochanged', newTempo);
+    }
 });
 
 module.exports = TransportView;
