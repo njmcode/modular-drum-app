@@ -1,3 +1,8 @@
+/**
+ * This configuration taken from
+ * https://github.com/gulpjs/gulp/blob/master/docs/recipes/fast-browserify-builds-with-watchify.md
+ **/
+
 var gulp = require('gulp');
 var gutil = require('gulp-util');
 var sourcemaps = require('gulp-sourcemaps');
@@ -11,22 +16,20 @@ hbsfy.configure({
     extensions: ['hbs']
 });
 
-var bundler = watchify(browserify(watchify.args));
-bundler.add('./src/main.js');
-
-gulp.task('build', bundle); // so you can run `gulp js` to build the file
-bundler.on('update', bundle); // on any dep update, runs the bundler
-bundler.on('log', gutil.log); // output build logs to terminal
-
 function bundle() {
   return bundler.transform(hbsfy)
     .bundle()
-    // log errors if they happen
     .on('error', gutil.log.bind(gutil, 'Browserify Error'))
     .pipe(source('main.js'))
-    // optional, remove if you dont want sourcemaps
 	.pipe(buffer())
-	.pipe(sourcemaps.init({loadMaps: true})) // loads map from browserify file
-	.pipe(sourcemaps.write('./')) // writes .map file
+	.pipe(sourcemaps.init({loadMaps: true}))
+	.pipe(sourcemaps.write('./'))
     .pipe(gulp.dest('./dist'));
 }
+
+var bundler = watchify(browserify(watchify.args));
+bundler.add('./src/main.js');
+bundler.on('update', bundle);
+bundler.on('log', gutil.log);
+
+gulp.task('default', bundle); // run `gulp` to build & watch

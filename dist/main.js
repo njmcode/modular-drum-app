@@ -13135,7 +13135,7 @@ function launchApp() {
     // Bind some connecting events to 'wire up' our modules
     proxyEvents({
         // PatternGrid note trigger -> SampleBank play sound
-        'patterngrid:requestsampleplay': 'samplebank:playsample',
+        'patterngrid:notehit': 'samplebank:playsample',
 
         // Transport control changes -> PatternGrid state changes
         'transport:requestplay': 'patterngrid:play',
@@ -13524,7 +13524,7 @@ var scheduler = require('./scheduler'),
  * Outbound events:
  *  - patterngrid:stepchanged (stepID)
  *      Fired when scheduler advances to next 16th
- *  - patterngrid:noteplayed (channelID, delay)
+ *  - patterngrid:notehit (channelID, delay)
  *      Fired when scheduler hits an 'on' note
  * ------------------------------------------------------
  **/
@@ -13638,7 +13638,7 @@ function playPattern(pattern) {
 function playPatternStepAtTime(pt) {
     for (var k in currentPattern) {
         if (currentPattern[k][currentStep] == '1') {
-            dispatcher.trigger('patterngrid:requestsampleplay', k, pt);
+            dispatcher.trigger('patterngrid:notehit', k, pt);
         }
         dispatcher.trigger('patterngrid:stepchanged', currentStep);
     }
