@@ -2,6 +2,8 @@
 
 Demo files for building a simple drum machine using modular architecture principles.
 
+![App screenshot](https://dl.dropboxusercontent.com/u/42386473/modular-drum-app.png)
+
 ## Setup
 
 The repo includes a pre-built JavaScript bundle for testing.
