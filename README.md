@@ -4,7 +4,7 @@ Demo files for building a simple drum machine using modular architecture princip
 
 As seen in Net Magazine #268, 'Building A Drum Machine With Backbone.js'.
 
-Screencast about the modular approach behind the project: ![https://www.youtube.com/watch?v=faaIzKr-w9E](https://www.youtube.com/watch?v=faaIzKr-w9E)
+Screencast about the modular approach behind the project: https://www.youtube.com/watch?v=faaIzKr-w9E
 
 ![App screenshot](https://dl.dropboxusercontent.com/u/42386473/modular-drum-app.png)
 
