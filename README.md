@@ -6,7 +6,7 @@ As seen in Net Magazine #268, 'Building A Drum Machine With Backbone.js'.
 
 Screencast about the modular approach behind the project: https://www.youtube.com/watch?v=faaIzKr-w9E
 
-![App screenshot](https://dl.dropboxusercontent.com/u/42386473/modular-drum-app.png)
+![App screenshot](https://dl.dropbox.com/s/p9twnqn2c09qn0g/modular-drum-app.png?dl=0)
 
 ## Setup
 
