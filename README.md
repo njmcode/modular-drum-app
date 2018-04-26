@@ -8,6 +8,8 @@ Screencast about the modular approach behind the project: https://www.youtube.co
 
 ![App screenshot](https://dl.dropbox.com/s/p9twnqn2c09qn0g/modular-drum-app.png?dl=0)
 
+Initial CodePen version that this was based on: https://codepen.io/njmcode/pen/PwaXwB
+
 ## Setup
 
 The repo includes a pre-built JavaScript bundle for testing.
